@@ -27,15 +27,14 @@ use {
             OtpInitResult, OtpVerifyResult, approve_sender_via_otp, emit_otp_challenge,
             emit_otp_resolution,
         },
-        plugin::{
-            ChannelAttachment, ChannelEventSink, ChannelMessageKind, ChannelMessageMeta,
-            ChannelReplyTarget,
-        },
+        plugin::{ChannelAttachment, ChannelEventSink, ChannelMessageKind, ChannelMessageMeta},
     },
     moltis_common::{http_client::build_default_http_client, ssrf::ssrf_check},
 };
 
 use crate::state::AccountStateMap;
+
+use super::reply_target::message_reply_target;
 
 /// Required gateway intents for the Discord bot.
 pub fn required_intents() -> GatewayIntents {
@@ -907,14 +906,7 @@ impl EventHandler for Handler {
             }
         }
 
-        let reply_to = ChannelReplyTarget {
-            ack_message_id: None,
-            channel_type: ChannelType::Discord,
-            account_id: self.account_id.clone(),
-            chat_id: chat_id.clone(),
-            message_id: Some(msg.id.to_string()),
-            thread_id: None,
-        };
+        let reply_to = message_reply_target(&self.account_id, msg.channel_id, msg.id, msg.guild_id);
 
         let Some(sink) = event_sink else {
             warn!(

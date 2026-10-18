@@ -1,3 +1,5 @@
+use moltis_channels::ChannelReplyTarget;
+
 use super::*;
 
 #[test]
