@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [20261018.01] - 2026-10-18
+### Added
+- Native gpui desktop client (apps/desktop) and moltis-client crate (#1306)
+
+
+### Fixed
+- [release] Notarize macOS apps with App Store Connect API keys
+- [discord] Classify direct messages as direct chats (#1295)
+
+
+### Security
+- [gateway] Open the browser on first run and make the URL hard to miss (#1307)
+
 ## [20260913.02] - 2026-09-13
 ### Fixed
 - [web] Correct ACP auto-bind backoff and release E2E assertions
