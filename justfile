@@ -410,6 +410,51 @@ ui-e2e-headed:
 # Build all Linux packages (deb + rpm + arch + appimage) for all architectures
 packages-all: deb-all rpm-all arch-pkg-all
 
+# Build the native gpui desktop client (apps/desktop, its own workspace).
+desktop-build:
+    cd apps/desktop && cargo build
+
+# Run the desktop client's tests.
+desktop-test:
+    cd apps/desktop && cargo test
+
+# Lint the desktop client (all feature combinations it ships with).
+desktop-lint:
+    cd apps/desktop && cargo clippy --all-targets --features mockup -- -D warnings
+    cd apps/desktop && cargo clippy --all-targets --no-default-features -- -D warnings
+
+# Run the desktop client.
+desktop-run:
+    cd apps/desktop && cargo run
+
+# Show UI variants from FILE side by side (the gpui-mockup agent skill).
+# Without FILE it shows the built-in demo (apps/desktop/src/mockup/demo.rs).
+desktop-mockup file="" feedback="" capture="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    absolute() { case "$1" in ""|/*) printf '%s' "$1" ;; *) printf '%s/%s' {{quote(invocation_directory())}} "$1" ;; esac; }
+    file="$(absolute {{quote(file)}})"
+    feedback="$(absolute {{quote(feedback)}})"
+    capture="$(absolute {{quote(capture)}})"
+    cd apps/desktop
+    MOLTIS_MOCKUP_FILE="$file" cargo build --locked --features mockup
+    args=(--mockup)
+    if [ -n "$feedback" ]; then args+=(--feedback "$feedback"); fi
+    if [ -n "$capture" ]; then args+=(--capture "$capture"); fi
+    exec target/debug/moltis-desktop "${args[@]}"
+
+# Package "Moltis Desktop.app" (macOS) with the moltis daemon inside.
+desktop-package-macos:
+    ./scripts/package-desktop-macos.sh
+
+# Package the Moltis Desktop AppImage (Linux) with the moltis daemon inside.
+desktop-package-linux:
+    ./scripts/package-desktop-linux.sh
+
+# Build "Moltis Desktop.app" with the moltis daemon inside (release) and open it.
+desktop-open-macos: desktop-package-macos
+    open "apps/desktop/target/bundle/Moltis Desktop.app"
+
 # Build Rust static library and generated C header for the macOS app.
 swift-build-rust:
     ./scripts/build-swift-bridge.sh
