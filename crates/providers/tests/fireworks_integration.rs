@@ -19,14 +19,12 @@ use {
 
 const FIREWORKS_BASE_URL: &str = "https://api.fireworks.ai/inference/v1";
 const TEST_MODEL: &str = "accounts/fireworks/models/gpt-oss-120b";
+const KIMI_MODEL: &str = "accounts/fireworks/models/kimi-k3";
 const TRANSIENT_RETRY_DELAYS: [u64; 3] = [5, 15, 30];
 
 /// Known Fireworks models we catalog. Keep in sync with `FIREWORKS_MODELS` in
 /// `crates/providers/src/model_catalogs.rs`.
-const KNOWN_MODELS: &[&str] = &[
-    "accounts/fireworks/models/kimi-k2p6",
-    "accounts/fireworks/models/gpt-oss-120b",
-];
+const KNOWN_MODELS: &[&str] = &[KIMI_MODEL, TEST_MODEL];
 
 fn api_key() -> Secret<String> {
     let key = std::env::var("FIREWORKS_API_KEY")
@@ -41,8 +39,7 @@ fn make_provider(model: &str) -> OpenAiProvider {
 }
 
 /// Build a provider with explicit name, applying the same overrides as
-/// `register_openai_compatible_providers` — all three production guards
-/// (`config_name == "fireworks"`, `/routers/`, `kimi`) are checked.
+/// `register_openai_compatible_providers` for Fireworks Kimi models and routers.
 fn make_named_provider(model: &str, provider_name: &str) -> OpenAiProvider {
     let mut p = OpenAiProvider::new_with_name(
         api_key(),
@@ -417,15 +414,13 @@ async fn catalog_models_are_live() {
     );
 }
 
-// ── Fireworks Kimi K2.6 regression coverage (issue #810) ────────────────────
+// ── Fireworks Kimi K3 regression coverage (issue #810) ──────────────────────
 
-const KIMI_MODEL: &str = "accounts/fireworks/models/kimi-k2p6";
-
-/// Basic completion via Fireworks Kimi K2.6 must succeed.
+/// Basic completion via Fireworks Kimi K3 must succeed.
 /// Regression test for issue #810 where strict mode schemas caused 400 errors.
 #[tokio::test]
 #[ignore]
-async fn kimi_router_basic_completion() {
+async fn kimi_basic_completion() {
     let p = make_provider(KIMI_MODEL);
     let messages = vec![ChatMessage::user(
         "What is 2+2? Answer with just the number.",
@@ -437,12 +432,12 @@ async fn kimi_router_basic_completion() {
     assert!(text.contains('4'), "expected '4' in response: {text:?}");
 }
 
-/// Tool calling via Fireworks Kimi K2.6 must not return 400.
+/// Tool calling via Fireworks Kimi K3 must not return 400.
 /// This was the primary regression in issue #810: strict tool schemas were
 /// sent to a backend that doesn't support them.
 #[tokio::test]
 #[ignore]
-async fn kimi_router_tool_call_no_400() {
+async fn kimi_tool_call_no_400() {
     let p = make_provider(KIMI_MODEL);
     let tools = vec![weather_tool()];
     let messages = vec![ChatMessage::user(
@@ -453,7 +448,7 @@ async fn kimi_router_tool_call_no_400() {
 
     assert!(
         !response.tool_calls.is_empty(),
-        "Kimi router should call tools, got text: {:?}",
+        "Kimi should call tools, got text: {:?}",
         response.text
     );
     assert_eq!(response.tool_calls[0].name, "get_weather");
@@ -463,7 +458,7 @@ async fn kimi_router_tool_call_no_400() {
 /// serialization that Moonshot requires on assistant tool-call messages.
 #[tokio::test]
 #[ignore]
-async fn kimi_router_multi_turn_tool_use() {
+async fn kimi_multi_turn_tool_use() {
     let p = make_provider(KIMI_MODEL);
     let tools = vec![weather_tool()];
 

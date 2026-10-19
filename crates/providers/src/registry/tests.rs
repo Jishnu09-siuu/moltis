@@ -164,7 +164,10 @@ fn capture_one_json_request() -> anyhow::Result<(String, mpsc::Receiver<anyhow::
     Ok((base_url, rx))
 }
 
-async fn capture_fireworks_kimi_request(strict_tools: Option<bool>) -> anyhow::Result<Value> {
+async fn capture_fireworks_kimi_request(
+    model: &str,
+    strict_tools: Option<bool>,
+) -> anyhow::Result<Value> {
     let (base_url, body_rx) = capture_one_json_request()?;
     let mut config = ProvidersConfig {
         offered: vec!["fireworks".into()],
@@ -173,7 +176,7 @@ async fn capture_fireworks_kimi_request(strict_tools: Option<bool>) -> anyhow::R
     config.providers.insert("fireworks".into(), ProviderEntry {
         api_key: Some(Secret::new("test-key".into())),
         base_url: Some(base_url),
-        models: vec![FIREWORKS_KIMI_ROUTER.into()],
+        models: vec![model.into()],
         strict_tools,
         ..ProviderEntry::default()
     });
@@ -181,8 +184,8 @@ async fn capture_fireworks_kimi_request(strict_tools: Option<bool>) -> anyhow::R
     let mut registry = ProviderRegistry::empty();
     registry.register_openai_compatible_providers(&config, &HashMap::new(), &HashMap::new());
     let provider = registry
-        .get(&format!("fireworks::{FIREWORKS_KIMI_ROUTER}"))
-        .context("registered Fireworks Kimi router model")?;
+        .get(&format!("fireworks::{model}"))
+        .context("registered Fireworks Kimi model")?;
     provider
         .complete(
             &[
@@ -264,24 +267,29 @@ async fn initial_openai_compat_registration_applies_provider_rewrite_quirks() ->
 }
 
 #[tokio::test]
-async fn initial_fireworks_kimi_router_registration_applies_model_scoped_quirks()
--> anyhow::Result<()> {
-    let body = capture_fireworks_kimi_request(None).await?;
+async fn initial_fireworks_kimi_registration_applies_model_scoped_quirks() -> anyhow::Result<()> {
+    for model in [FIREWORKS_KIMI_ROUTER, "accounts/fireworks/models/kimi-k3"] {
+        let body = capture_fireworks_kimi_request(model, None).await?;
 
-    assert_eq!(body["tools"][0]["function"]["strict"], false);
-    let messages = body["messages"].as_array().context("messages array")?;
-    let assistant_tool_message = messages
-        .iter()
-        .find(|message| message.get("tool_calls").is_some())
-        .context("assistant tool-call message")?;
-    assert_eq!(assistant_tool_message["reasoning_content"], "need weather");
+        assert_eq!(body["model"], model);
+        assert_eq!(body["tools"][0]["function"]["strict"], false);
+        let messages = body["messages"].as_array().context("messages array")?;
+        let assistant_tool_message = messages
+            .iter()
+            .find(|message| message.get("tool_calls").is_some())
+            .context("assistant tool-call message")?;
+        assert_eq!(assistant_tool_message["reasoning_content"], "need weather");
+    }
     Ok(())
 }
 
 #[tokio::test]
-async fn explicit_strict_tools_overrides_fireworks_kimi_router_default() -> anyhow::Result<()> {
-    let body = capture_fireworks_kimi_request(Some(true)).await?;
+async fn explicit_strict_tools_overrides_fireworks_kimi_default() -> anyhow::Result<()> {
+    for model in [FIREWORKS_KIMI_ROUTER, "accounts/fireworks/models/kimi-k3"] {
+        let body = capture_fireworks_kimi_request(model, Some(true)).await?;
 
-    assert_eq!(body["tools"][0]["function"]["strict"], true);
+        assert_eq!(body["model"], model);
+        assert_eq!(body["tools"][0]["function"]["strict"], true);
+    }
     Ok(())
 }

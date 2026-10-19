@@ -222,7 +222,7 @@ loopback_http = true                # Plain HTTP on loopback binds: http://local
 # [providers.fireworks]
 # enabled = true
 # api_key = "..."                             # Or set FIREWORKS_API_KEY env var
-# models = ["accounts/fireworks/models/kimi-k2p6"]
+# models = ["accounts/fireworks/models/kimi-k3"]
 # fetch_models = true                          # Set false to skip remote discovery
 # base_url = "https://api.fireworks.ai/inference/v1"
 # alias = "fireworks"

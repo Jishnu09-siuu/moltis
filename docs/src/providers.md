@@ -20,6 +20,7 @@ Configure providers through the web UI or directly in configuration files.
 | **Cerebras** | `cerebras` | `CEREBRAS_API_KEY` | Streaming, tools, model discovery |
 | **MiniMax** | `minimax` | `MINIMAX_API_KEY` | Streaming, tools, M3 vision |
 | **Moonshot (Kimi)** | `moonshot` | `MOONSHOT_API_KEY` | Streaming, tools, model discovery |
+| **Fireworks** | `fireworks` | `FIREWORKS_API_KEY` | Streaming, tools, model discovery |
 | **Venice** | `venice` | `VENICE_API_KEY` | Streaming, tools, model discovery |
 | **NEAR AI Cloud** | `nearai` | `NEARAI_API_KEY` | Streaming, TEE-aware model discovery |
 | **Z.AI (Zhipu)** | `zai` | `Z_API_KEY` | Streaming, tools, model discovery |
@@ -105,6 +106,23 @@ Each provider supports these options:
 | `tool_mode` | `"auto"` | `"auto"`, `"native"`, `"text"`, or `"off"` |
 
 ## Provider Setup
+
+### Fireworks
+
+The built-in Fireworks catalog includes Kimi K3 and GPT OSS 120B. For Kimi on
+the serverless API, use `accounts/fireworks/models/kimi-k3`:
+
+```toml
+[providers.fireworks]
+enabled = true
+models = ["accounts/fireworks/models/kimi-k3"]
+# Set FIREWORKS_API_KEY in the environment.
+```
+
+Fireworks retired Kimi K2.6 and K2.7 Code from serverless on September 25, 2026;
+those models remain available for on-demand deployments. If your configuration
+pins `accounts/fireworks/models/kimi-k2p6`, update it to Kimi K3 to avoid model-not-found
+errors. See the [Fireworks Kimi K3 model page](https://fireworks.ai/models/fireworks/kimi-k3).
 
 ### Google Gemini
 

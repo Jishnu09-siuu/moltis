@@ -75,8 +75,10 @@ const FIREWORKS_KIMI_ROUTER_PREFIXES: &[&str] = &[
 ];
 
 /// Known Fireworks models.
+/// Kimi K2.6 is on-demand only; Kimi K3 is the serverless replacement.
+/// See: <https://fireworks.ai/models/fireworks/kimi-k3>
 pub(crate) const FIREWORKS_MODELS: &[(&str, &str)] = &[
-    ("accounts/fireworks/models/kimi-k2p6", "Kimi K2.6"),
+    ("accounts/fireworks/models/kimi-k3", "Kimi K3"),
     ("accounts/fireworks/models/gpt-oss-120b", "GPT OSS 120B"),
 ];
 
@@ -603,6 +605,9 @@ mod tests {
 
         assert!(matches("accounts/fireworks/routers/kimi-k2p5-turbo"));
         assert!(matches("accounts/fireworks/models/kimi-k2p6"));
+        assert!(matches("accounts/fireworks/models/kimi-k3"));
+        assert!(matches("accounts/fireworks/routers/kimi-k3-fast"));
+        assert!(matches("accounts/fireworks/routers/kimi-k3-us"));
         assert!(!matches("accounts/fireworks/models/gpt-oss-120b"));
 
         // non_strict_tools_model_prefixes should use the same prefixes
