@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [20261022.01] - 2026-10-22
+### Fixed
+- [tls] Update certificate verifier and roots for CA distrust (#1313)
+
 ## [20261019.01] - 2026-10-19
 ### Fixed
 - [providers] Replace retired Fireworks Kimi model with K3
