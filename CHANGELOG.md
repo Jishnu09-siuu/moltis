@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [20261022.02] - 2026-10-22
+### Fixed
+- [providers] Refresh retired MiniMax models and verify live tool use (#1314)
+
 ## [20261022.01] - 2026-10-22
 ### Fixed
 - [tls] Update certificate verifier and roots for CA distrust (#1313)
