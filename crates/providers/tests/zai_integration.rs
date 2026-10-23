@@ -5,19 +5,28 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use std::{collections::HashSet, time::Duration};
+#[path = "support/registered_provider.rs"]
+mod registered_provider;
+
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use {
     futures::StreamExt,
-    moltis_agents::model::{ChatMessage, LlmProvider, StreamEvent, ToolCall},
-    moltis_providers::openai::OpenAiProvider,
+    moltis_agents::model::{ChatMessage, LlmProvider, ReasoningEffort, StreamEvent},
     secrecy::{ExposeSecret, Secret},
 };
 
 const BASE_URL: &str = "https://api.z.ai/api/paas/v4";
-const TEST_MODEL: &str = "glm-4.5-flash";
+// Use the current metered Flash model for the behavioral contract. The older
+// free pool has independent quota/overload limits and remains in the catalog
+// health report rather than defining availability for every behavioral test.
+const TEST_MODEL: &str = "glm-5.3-flash";
 
 const KNOWN_MODELS: &[&str] = &[
+    "glm-5.3",
+    "glm-5.3-flash",
+    "glm-5.3-flashx",
+    "glm-5.2",
     "glm-5",
     "glm-4.7",
     "glm-4.7-flash",
@@ -37,13 +46,8 @@ fn api_key() -> Secret<String> {
     Secret::new(std::env::var("Z_API_KEY").expect("Z_API_KEY must be set for integration tests"))
 }
 
-fn make_provider(model: &str) -> OpenAiProvider {
-    OpenAiProvider::new_with_name(
-        api_key(),
-        model.to_string(),
-        BASE_URL.to_string(),
-        "zai".to_string(),
-    )
+fn make_provider(model: &str) -> Arc<dyn LlmProvider> {
+    registered_provider::registered_provider("zai", model, BASE_URL, api_key())
 }
 
 async fn probe_with_retries(model: &str) -> Result<(), String> {
@@ -199,24 +203,16 @@ async fn multi_turn_tool_use() {
         .await
         .expect("first turn");
     assert!(!r.tool_calls.is_empty(), "should call tool");
-    let tc = &r.tool_calls[0];
-    let r2 = p
-        .complete(
-            &[
-                ChatMessage::user("Weather in London? Use get_weather."),
-                ChatMessage::assistant_with_tools(r.text.clone(), vec![ToolCall {
-                    id: tc.id.clone(),
-                    name: tc.name.clone(),
-                    arguments: tc.arguments.clone(),
-                    argument_diagnostic: tc.argument_diagnostic.clone(),
-                    metadata: tc.metadata.clone(),
-                }]),
-                ChatMessage::tool(&tc.id, r#"{"temperature": 15, "condition": "cloudy"}"#),
-            ],
-            &tools,
-        )
-        .await
-        .expect("second turn");
+    let mut messages = vec![
+        ChatMessage::user("Weather in London? Use get_weather."),
+        ChatMessage::from(&r),
+    ];
+    messages.extend(
+        r.tool_calls.iter().map(|call| {
+            ChatMessage::tool(&call.id, r#"{"temperature": 15, "condition": "cloudy"}"#)
+        }),
+    );
+    let r2 = p.complete(&messages, &tools).await.expect("second turn");
     assert!(r2.text.is_some(), "should have text after tool result");
 }
 
@@ -253,6 +249,38 @@ async fn stream_emits_delta_and_done() {
 }
 
 // ── Model catalog ────────────────────────────────────────────────────────────
+
+/// Verify an explicitly configured low-effort stream as well as the default.
+#[tokio::test]
+#[ignore]
+async fn current_flash_model_streams_tool_calls() {
+    let provider = make_provider(TEST_MODEL)
+        .with_reasoning_effort(ReasoningEffort::Low)
+        .expect("reasoning provider");
+    let mut stream = provider.stream_with_tools(
+        vec![ChatMessage::user(
+            "What is the weather in London? Use get_weather.",
+        )],
+        vec![weather_tool()],
+    );
+    let mut saw_tool = false;
+    let mut saw_done = false;
+    while let Some(event) = stream.next().await {
+        match event {
+            StreamEvent::ToolCallStart { name, .. } => {
+                assert_eq!(name, "get_weather");
+                saw_tool = true;
+            },
+            StreamEvent::Done(_) => {
+                saw_done = true;
+                break;
+            },
+            StreamEvent::Error(error) => panic!("current Flash stream failed: {error}"),
+            _ => {},
+        }
+    }
+    assert!(saw_tool && saw_done);
+}
 
 #[tokio::test]
 #[ignore]

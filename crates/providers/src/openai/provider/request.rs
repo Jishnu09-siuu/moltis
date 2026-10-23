@@ -396,7 +396,6 @@ impl OpenAiProvider {
 
                 if is_assistant && has_tool_calls {
                     let reasoning_content = assistant_reasoning
-                        .filter(|reasoning| !reasoning.trim().is_empty())
                         .map(str::to_string)
                         .or_else(|| {
                             value
@@ -971,10 +970,10 @@ mod tests {
     }
 
     #[test]
-    fn deepseek_v4_reasoning_effort_enables_thinking_and_maps_top_levels_to_max() {
-        for effort in [
-            moltis_agents::model::ReasoningEffort::ExtraHigh,
-            moltis_agents::model::ReasoningEffort::Max,
+    fn deepseek_v4_reasoning_effort_enables_thinking_with_documented_mapping() {
+        for (effort, expected) in [
+            (moltis_agents::model::ReasoningEffort::ExtraHigh, "high"),
+            (moltis_agents::model::ReasoningEffort::Max, "max"),
         ] {
             let mut p = provider("deepseek-v4-pro", "deepseek", "https://api.deepseek.com")
                 .with_capabilities(OpenAiProviderCapabilities {
@@ -989,18 +988,18 @@ mod tests {
 
             p.apply_reasoning_effort_chat(&mut body);
 
-            assert_eq!(body["reasoning_effort"], "max");
+            assert_eq!(body["reasoning_effort"], expected);
             assert_eq!(body["thinking"], serde_json::json!({ "type": "enabled" }));
         }
     }
 
     #[test]
-    fn deepseek_v4_reasoning_effort_maps_lower_levels_to_high() {
-        for effort in [
-            moltis_agents::model::ReasoningEffort::Minimal,
-            moltis_agents::model::ReasoningEffort::Low,
-            moltis_agents::model::ReasoningEffort::Medium,
-            moltis_agents::model::ReasoningEffort::High,
+    fn deepseek_v4_reasoning_effort_maps_lower_levels_as_documented() {
+        for (effort, expected) in [
+            (moltis_agents::model::ReasoningEffort::Minimal, "low"),
+            (moltis_agents::model::ReasoningEffort::Low, "low"),
+            (moltis_agents::model::ReasoningEffort::Medium, "high"),
+            (moltis_agents::model::ReasoningEffort::High, "high"),
         ] {
             let mut p = provider("deepseek-v4-flash", "deepseek", "https://api.deepseek.com")
                 .with_capabilities(OpenAiProviderCapabilities {
@@ -1008,7 +1007,7 @@ mod tests {
                     ..OpenAiProviderCapabilities::DEFAULT
                 });
             p.reasoning_effort = Some(effort);
-            assert_eq!(p.reasoning_effort_str(), Some("high"));
+            assert_eq!(p.reasoning_effort_str(), Some(expected));
         }
     }
 
@@ -1160,6 +1159,29 @@ mod tests {
             assistant_msg.get("reasoning_content").is_some(),
             "assistant tool-call message must have reasoning_content, got: {assistant_msg}"
         );
+    }
+
+    #[test]
+    fn deepseek_explicit_empty_reasoning_is_not_replaced_by_visible_text() {
+        let p = provider("deepseek-flash", "deepseek", "https://api.deepseek.com")
+            .with_capabilities(OpenAiProviderCapabilities {
+                reasoning_content_model_prefixes: &["deepseek-flash"],
+                ..OpenAiProviderCapabilities::DEFAULT
+            });
+        let messages = [ChatMessage::Assistant {
+            content: Some("Checking weather".into()),
+            reasoning: Some(String::new()),
+            tool_calls: vec![moltis_agents::model::ToolCall {
+                id: "call_weather".into(),
+                name: "get_weather".into(),
+                arguments: serde_json::json!({"location":"Lisbon"}),
+                argument_diagnostic: None,
+                metadata: None,
+            }],
+        }];
+        let serialized = p.serialize_messages_for_request(&messages);
+        assert_eq!(serialized[0]["reasoning_content"], "");
+        assert_eq!(serialized[0]["content"], "Checking weather");
     }
 
     #[test]
