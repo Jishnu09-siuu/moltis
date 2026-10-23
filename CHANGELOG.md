@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [20261023.01] - 2026-10-23
+### Fixed
+- [providers] Correct DeepSeek thinking tests and refresh Z.AI models (#1317)
+- [providers] Use canonical NEAR AI catalog model (#1318)
+
 ## [20261022.02] - 2026-10-22
 ### Fixed
 - [providers] Refresh retired MiniMax models and verify live tool use (#1314)
